@@ -19,7 +19,7 @@ SERPAPI_KEY    = os.getenv("SERPAPI_KEY", "")
 # ── Hyderabad geocenter ────────────────────────────────────────────────────────
 HYD_LAT, HYD_LNG = 17.3850, 78.4867
 
-PLACES_BASE  = "https://places.googleapis.com/v1/places"
+PLACES_BASE  = "https://maps.googleapis.com/maps/api/place"
 MAPS_BASE    = "https://maps.googleapis.com/maps/api/distancematrix"
 SERPAPI_BASE = "https://serpapi.com/search"
 
