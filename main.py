@@ -17,12 +17,8 @@ app = FastAPI(title="FunPlanner API", version="1.0.0")
 # ── CORS: allow your frontend origin ──────────────────────────────────────────
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "https://funplanner.vercel.app",
-        "https://*.vercel.app",
-    ],
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
