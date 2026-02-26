@@ -1,8 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 
 // ── Change this to your deployed backend URL ──────────────────────────────
-//const API_BASE = "http://localhost:8000";
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
+const API_BASE = "http://localhost:8000";
 
 const SAMPLE_PROMPTS = [
   "Bored on a weekday, want to spend 4-6 hours in Hyderabad within ₹2000. Like biryani.",
@@ -189,6 +188,62 @@ function TimelineCard({ item, index }) {
             Open ↗
           </a>
         )}
+
+        {/* Uber/Ola deep link buttons for travel cards */}
+        {item.category === "travel" && item.pickup_coords && item.dropoff_coords && (
+          <div style={{ display: "flex", gap: "8px", marginTop: "10px", flexWrap: "wrap" }}>
+            <a
+              href={`https://m.uber.com/ul/?action=setPickup&pickup[latitude]=${item.pickup_coords.lat}&pickup[longitude]=${item.pickup_coords.lng}&dropoff[latitude]=${item.dropoff_coords.lat}&dropoff[longitude]=${item.dropoff_coords.lng}&dropoff[nickname]=${encodeURIComponent(item.dropoff_name || "Destination")}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "5px",
+                fontSize: "12px",
+                fontWeight: 600,
+                color: "#000",
+                background: "#fff",
+                textDecoration: "none",
+                padding: "5px 12px",
+                borderRadius: "8px",
+                fontFamily: "'DM Sans', sans-serif",
+              }}
+            >
+              <span style={{ fontSize: "14px" }}>⚫</span> Uber
+            </a>
+            <a
+              href={`https://book.olacabs.com/?pickup_lat=${item.pickup_coords.lat}&pickup_lng=${item.pickup_coords.lng}&drop_lat=${item.dropoff_coords.lat}&drop_lng=${item.dropoff_coords.lng}&drop_name=${encodeURIComponent(item.dropoff_name || "Destination")}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "5px",
+                fontSize: "12px",
+                fontWeight: 600,
+                color: "#fff",
+                background: "#10b981",
+                textDecoration: "none",
+                padding: "5px 12px",
+                borderRadius: "8px",
+                fontFamily: "'DM Sans', sans-serif",
+              }}
+            >
+              <span style={{ fontSize: "14px" }}>🟡</span> Ola
+            </a>
+            {item.estimated_fare && (
+              <span style={{
+                fontSize: "11px",
+                color: "#64748b",
+                alignSelf: "center",
+                fontFamily: "'DM Mono', monospace",
+              }}>
+                est. {item.estimated_fare}
+              </span>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -306,7 +361,7 @@ export default function FunPlanner() {
   };
 
   return (
-    <div style={{ minHeight: "100vh", width: "100%", background: "#070b12", color: "#f1f5f9", fontFamily: "'DM Sans', sans-serif" }}>
+    <div style={{ minHeight: "100vh", background: "#070b12", color: "#f1f5f9", fontFamily: "'DM Sans', sans-serif" }}>
       {/* Ambient background */}
       <div style={{
         position: "fixed", inset: 0, pointerEvents: "none",
