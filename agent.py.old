@@ -61,11 +61,7 @@ After all tool calls, respond ONLY with this exact JSON (no markdown, no extra t
       "category": "travel",
       "location": "Secunderabad → Tank Bund Road",
       "cost": 80,
-      "description": "Take Uber/Ola. ~15 min ride. Pre-book on app for best fare.",
-      "pickup_coords": { "lat": 17.4399, "lng": 78.4983 },
-      "dropoff_coords": { "lat": 17.4239, "lng": 78.4738 },
-      "dropoff_name": "Hussain Sagar Lake",
-      "estimated_fare": "₹80-120"
+      "description": "Take Uber/Ola. ~15 min ride. Pre-book on app for best fare."
     }
   ],
   "tips": [
@@ -82,7 +78,6 @@ After all tool calls, respond ONLY with this exact JSON (no markdown, no extra t
 
 Categories: "food", "movie", "place", "travel", "shopping", "entertainment"
 Always include travel steps between locations with realistic Uber/Ola cost.
-For ALL travel steps, always include pickup_coords, dropoff_coords (lat/lng), dropoff_name, and estimated_fare so users can deep-link directly into Uber/Ola apps.
 """
 
 
