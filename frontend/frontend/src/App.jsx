@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from "react";
 
 // ── Change this to your deployed backend URL ──────────────────────────────
-const API_BASE = "http://localhost:8000";
+// const API_BASE = "http://localhost:8000";
+const API_BASE = import.meta.env.VITE_API_BASE || "https://funplanner-production.up.railway.app";
 
 const SAMPLE_PROMPTS = [
   "Bored on a weekday, want to spend 4-6 hours in Hyderabad within ₹2000. Like biryani.",
