@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 
 // ── Change this to your deployed backend URL ──────────────────────────────
-// const API_BASE = "http://localhost:8000";
 const API_BASE = import.meta.env.VITE_API_BASE || "https://funplanner-production.up.railway.app";
 
 const SAMPLE_PROMPTS = [
@@ -170,7 +169,50 @@ function TimelineCard({ item, index }) {
           </div>
         )}
 
-        {item.link && item.category !== "travel" && (
+        {/* BookMyShow button for movie cards */}
+        {item.category === "movie" && (
+          <div style={{ display: "flex", gap: "8px", marginTop: "10px", flexWrap: "wrap", alignItems: "center" }}>
+            <a
+              href={`https://in.bookmyshow.com/search?q=${encodeURIComponent(item.movie_title || "movies")}&category=MOVIES`}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+                fontSize: "12px",
+                fontWeight: 700,
+                color: "#fff",
+                background: "linear-gradient(135deg, #e71a45 0%, #c2143a 100%)",
+                textDecoration: "none",
+                padding: "6px 14px",
+                borderRadius: "8px",
+                fontFamily: "'DM Sans', sans-serif",
+              }}
+            >
+              🎟️ Book on BookMyShow
+            </a>
+            <a
+              href="https://in.bookmyshow.com/explore/movies-hyderabad"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                fontSize: "11px",
+                color: "#94a3b8",
+                textDecoration: "none",
+                border: "1px solid rgba(255,255,255,0.1)",
+                padding: "5px 10px",
+                borderRadius: "8px",
+                fontFamily: "'DM Sans', sans-serif",
+              }}
+            >
+              All movies ↗
+            </a>
+          </div>
+        )}
+
+        {/* Generic Open button for non-movie, non-travel cards */}
+        {item.link && item.category !== "travel" && item.category !== "movie" && (
           <a
             href={item.link}
             target="_blank"

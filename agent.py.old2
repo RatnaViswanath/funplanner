@@ -56,17 +56,6 @@ After all tool calls, respond ONLY with this exact JSON (no markdown, no extra t
       "link": "https://maps.google.com/?q=Paradise+Biryani"
     },
     {
-      "time": "3:00 PM",
-      "title": "Action Movie at PVR",
-      "category": "movie",
-      "location": "PVR INOX GVK One, Banjara Hills",
-      "cost": 350,
-      "rating": 8.2,
-      "movie_title": "Exact Movie Name Here",
-      "description": "Latest action blockbuster. 2h 20m duration. Book tickets on BookMyShow.",
-      "link": "https://in.bookmyshow.com/search?q=movie+name"
-    },
-    {
       "time": "1:30 PM",
       "title": "Travel to Hussain Sagar",
       "category": "travel",
@@ -94,7 +83,6 @@ After all tool calls, respond ONLY with this exact JSON (no markdown, no extra t
 Categories: "food", "movie", "place", "travel", "shopping", "entertainment"
 Always include travel steps between locations with realistic Uber/Ola cost.
 For ALL travel steps, always include pickup_coords, dropoff_coords (lat/lng), dropoff_name, and estimated_fare so users can deep-link directly into Uber/Ola apps.
-For ALL movie steps, always include movie_title (the exact film name, not the venue) so users can search it directly on BookMyShow.
 """
 
 
