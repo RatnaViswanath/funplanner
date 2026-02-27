@@ -32,36 +32,24 @@ async def search_restaurants(
     max_budget_per_person: int,
     cuisine: str = "",
     limit: int = 5,
-    user_lat: float = None,
-    user_lng: float = None,
-    radius_km: int = 8,
 ) -> list[dict]:
     """
-    Search Google Places for restaurants near the user's location.
-    Uses nearbysearch (radius-based) when GPS coords available,
-    falls back to textsearch otherwise.
+    Search Google Places for restaurants in <area>, Hyderabad.
+    Returns list of {name, address, rating, price_level, maps_url, estimated_cost}.
     """
     if not GOOGLE_API_KEY:
         return _mock_restaurants(area, max_budget_per_person)
 
+    query = f"{cuisine} restaurant in {area} Hyderabad"
     async with httpx.AsyncClient(timeout=10) as client:
-        if user_lat and user_lng:
-            # Nearby search — sorted by proximity to user
-            params = {
-                "location": f"{user_lat},{user_lng}",
-                "radius":   radius_km * 1000,
-                "type":     "restaurant",
-                "key":      GOOGLE_API_KEY,
-            }
-            if cuisine:
-                params["keyword"] = cuisine
-            r = await client.get(f"{PLACES_BASE}/nearbysearch/json", params=params)
-        else:
-            query = f"{cuisine} restaurant in {area} Hyderabad"
-            r = await client.get(
-                f"{PLACES_BASE}/textsearch/json",
-                params={"query": query, "key": GOOGLE_API_KEY, "type": "restaurant"},
-            )
+        r = await client.get(
+            f"{PLACES_BASE}/textsearch/json",
+            params={
+                "query": query,
+                "key": GOOGLE_API_KEY,
+                "type": "restaurant",
+            },
+        )
     data = r.json()
     results = []
     for p in data.get("results", [])[:limit]:
@@ -180,51 +168,23 @@ async def search_places(
     max_entry_fee: int = 200,
     area: str = "Hyderabad",
     limit: int = 6,
-    user_lat: float = None,
-    user_lng: float = None,
-    radius_km: int = 10,
 ) -> list[dict]:
     """
-    Search Google Places for attractions near the user.
-    Uses nearbysearch (radius-based) when GPS coords available — 
-    this returns places sorted by proximity, not fame.
+    Search Google Places for tourist spots / attractions in Hyderabad.
     """
     if not GOOGLE_API_KEY:
         return _mock_places(interests, max_entry_fee)
 
-    # Map interest to Google place type
-    type_map = {
-        "park":          "park",
-        "nature":        "park",
-        "shopping":      "shopping_mall",
-        "movie":         "movie_theater",
-        "entertainment": "amusement_park",
-        "historical":    "tourist_attraction",
-        "religious":     "place_of_worship",
-    }
-    place_type = "tourist_attraction"
-    for k, v in type_map.items():
-        if k in interests.lower():
-            place_type = v
-            break
-
+    query = f"{interests} attractions in {area} Hyderabad"
     async with httpx.AsyncClient(timeout=10) as client:
-        if user_lat and user_lng:
-            # Nearby search — radius 10km, sorted by proximity
-            params = {
-                "location": f"{user_lat},{user_lng}",
-                "radius":   radius_km * 1000,
-                "type":     place_type,
-                "key":      GOOGLE_API_KEY,
-                "keyword":  interests,
-            }
-            r = await client.get(f"{PLACES_BASE}/nearbysearch/json", params=params)
-        else:
-            query = f"{interests} attractions in {area} Hyderabad"
-            r = await client.get(
-                f"{PLACES_BASE}/textsearch/json",
-                params={"query": query, "key": GOOGLE_API_KEY, "type": place_type},
-            )
+        r = await client.get(
+            f"{PLACES_BASE}/textsearch/json",
+            params={
+                "query": query,
+                "key":   GOOGLE_API_KEY,
+                "type":  "tourist_attraction",
+            },
+        )
     data = r.json()
     results = []
     for p in data.get("results", [])[:limit]:
@@ -341,9 +301,8 @@ TOOL_DEFINITIONS = [
     {
         "name": "search_restaurants",
         "description": (
-            "Search for restaurants near the user's location in Hyderabad. "
-            "When user_lat/user_lng are provided, returns restaurants sorted by proximity (closest first). "
-            "ALWAYS pass user_lat and user_lng when available — this avoids recommending distant restaurants. "
+            "Search for restaurants in a specific area of Hyderabad "
+            "filtered by cuisine type and budget per person. "
             "Returns name, address, ratings, estimated cost per person, and Google Maps link."
         ),
         "input_schema": {
@@ -352,9 +311,6 @@ TOOL_DEFINITIONS = [
                 "area":                   {"type": "string", "description": "Area/neighbourhood in Hyderabad, e.g. 'Banjara Hills'"},
                 "max_budget_per_person":  {"type": "integer", "description": "Max price per person in INR"},
                 "cuisine":                {"type": "string", "description": "Cuisine type, e.g. 'biryani', 'South Indian', 'Chinese'"},
-                "user_lat":               {"type": "number", "description": "User GPS latitude — pass this to get nearby results"},
-                "user_lng":               {"type": "number", "description": "User GPS longitude — pass this to get nearby results"},
-                "radius_km":              {"type": "integer", "description": "Search radius in km (default 8)"},
             },
             "required": ["area", "max_budget_per_person"],
         },
@@ -378,20 +334,16 @@ TOOL_DEFINITIONS = [
     {
         "name": "search_places",
         "description": (
-            "Search for attractions, parks, malls and entertainment venues NEAR the user. "
-            "When user_lat/user_lng are provided, returns places within radius_km sorted by proximity. "
-            "ALWAYS pass user_lat and user_lng when available — never recommend places 20km away when "
-            "there are good options nearby. Returns name, address, rating, entry fee, visit duration, maps link."
+            "Search for tourist attractions, parks, malls, and entertainment "
+            "venues in Hyderabad. Returns name, address, rating, entry fee, "
+            "estimated visit duration, and Google Maps link."
         ),
         "input_schema": {
             "type": "object",
             "properties": {
-                "interests":      {"type": "string", "description": "Type: 'park', 'nature', 'shopping', 'entertainment', 'historical', 'religious'"},
+                "interests":      {"type": "string", "description": "Type of place e.g. 'historical', 'nature', 'shopping', 'entertainment'"},
                 "max_entry_fee":  {"type": "integer", "description": "Max entry fee willing to pay in INR"},
                 "area":           {"type": "string", "description": "Preferred area/zone in Hyderabad"},
-                "user_lat":       {"type": "number", "description": "User GPS latitude — pass this to get nearby results"},
-                "user_lng":       {"type": "number", "description": "User GPS longitude — pass this to get nearby results"},
-                "radius_km":      {"type": "integer", "description": "Search radius in km (default 10)"},
             },
             "required": ["max_entry_fee"],
         },

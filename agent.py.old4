@@ -32,17 +32,6 @@ BUDGET RULES:
 - Be conservative: always leave ₹100-200 buffer for miscellaneous spending
 - Ticket prices + restaurant cost + travel cost = check they sum below budget
 
-PROXIMITY RULES — CRITICAL:
-- Total travel time across the entire day MUST be under 25% of the available time window
-  Example: 4-hour window → max 60 mins total travel. 6-hour window → max 90 mins total travel.
-- ALWAYS pass user_lat and user_lng to search_restaurants and search_places tool calls
-- Prefer places within 8-10 km of the user's starting location
-- If the user is in north Hyderabad (Jeedimetla, Kompally, Medchal), suggest north-side venues
-- If the user is in west Hyderabad (HITEC City, Kondapur, Gachibowli), suggest west-side venues
-- If the user is in south Hyderabad (LB Nagar, Dilsukhnagar), suggest south-side venues
-- NEVER recommend Golconda Fort, Charminar, or Hussain Sagar to a user who is 20+ km away unless they specifically ask
-- Famous landmarks are NOT always the best choice — a good nearby park beats a far-away monument
-
 OUTPUT FORMAT:
 After all tool calls, respond ONLY with this exact JSON (no markdown, no extra text):
 {
@@ -135,18 +124,14 @@ async def run_planner_agent(
     if user_coords:
         location_context = (
             f"\n\n[SYSTEM NOTE: The user's EXACT current GPS location is {location} "
-            f"(coordinates: lat={user_coords['lat']:.4f}, lng={user_coords['lng']:.4f}). "
-            f"MANDATORY INSTRUCTIONS:\n"
-            f"1. Start the itinerary from this location.\n"
-            f"2. When calling search_restaurants, pass user_lat={user_coords['lat']:.4f} and user_lng={user_coords['lng']:.4f}.\n"
-            f"3. When calling search_places, pass user_lat={user_coords['lat']:.4f} and user_lng={user_coords['lng']:.4f}.\n"
-            f"4. Only suggest places within 10km of this location unless the user explicitly asks for far destinations.\n"
-            f"5. Use these coordinates as pickup_coords for the first travel step.]\n\n"
+            f"(coordinates: {user_coords['lat']:.4f}, {user_coords['lng']:.4f}). "
+            f"You MUST start the itinerary from this location. Use these coordinates as "
+            f"pickup_coords for the first travel step. Do NOT substitute a different neighbourhood.]\n\n"
         )
     elif location and location != "Hyderabad":
         location_context = (
             f"\n\n[SYSTEM NOTE: The user's starting location is {location}. "
-            f"Begin the itinerary from this area and prefer nearby venues.]\n\n"
+            f"Begin the itinerary from this area.]\n\n"
         )
 
     augmented_prompt = location_context + user_prompt
