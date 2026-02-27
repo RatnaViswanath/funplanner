@@ -957,7 +957,7 @@ export default function FunPlanner() {
         </div>
 
         {/* ── AGENT STEPS PANEL ── */}
-        {(isLoading || steps.length > 0) && !result && (
+        {(isLoading || steps.length > 0) && plans.length === 0 && (
           <div style={{
             background: "rgba(255,255,255,0.018)",
             border: "1px solid rgba(255,255,255,0.07)",

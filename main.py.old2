@@ -28,7 +28,6 @@ class PlanRequest(BaseModel):
     prompt: str
     location: str = "Hyderabad"
     user_coords: dict | None = None
-    weather: dict | None = None
 
 
 @app.get("/health")
@@ -47,7 +46,7 @@ async def create_plan(req: PlanRequest):
         raise HTTPException(400, "Prompt cannot be empty")
 
     async def event_stream():
-        async for event in run_planner_agent(req.prompt, req.location, req.user_coords, req.weather):
+        async for event in run_planner_agent(req.prompt, req.location, req.user_coords):
             yield f"data: {json.dumps(event)}\n\n"
         yield "data: [DONE]\n\n"
 

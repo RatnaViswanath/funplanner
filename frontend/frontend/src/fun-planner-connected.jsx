@@ -649,6 +649,9 @@ export default function FunPlanner() {
   const [locationStatus, setLocationStatus]     = useState("idle"); // idle | detecting | found | denied
   const [locationError, setLocationError]       = useState(null);
 
+  // Weather state
+  const [weather, setWeather] = useState(null); // { temp, condition, icon, isOutdoorFriendly, warning }
+
   const detectLocation = async () => {
     if (!navigator.geolocation) {
       setLocationError("Geolocation not supported by your browser.");
@@ -679,6 +682,49 @@ export default function FunPlanner() {
             "Your location";
           setUserLocation({ lat, lng, name });
           setLocationStatus("found");
+
+          // Fetch weather from Open-Meteo (free, no API key)
+          try {
+            const wRes = await fetch(
+              `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}` +
+              `&current=temperature_2m,precipitation,weathercode,windspeed_10m&timezone=Asia%2FKolkata`
+            );
+            const wData = await wRes.json();
+            const c = wData.current || {};
+            const code = c.weathercode ?? 0;
+            const temp = Math.round(c.temperature_2m ?? 30);
+            const rain = (c.precipitation ?? 0);
+            const wind = (c.windspeed_10m ?? 0);
+
+            // WMO weather code → human label + emoji
+            const getCondition = (code) => {
+              if (code === 0)              return { label: "Clear sky",       icon: "☀️" };
+              if (code <= 2)              return { label: "Partly cloudy",   icon: "⛅" };
+              if (code === 3)             return { label: "Overcast",        icon: "☁️" };
+              if (code <= 49)             return { label: "Foggy",           icon: "🌫️" };
+              if (code <= 59)             return { label: "Drizzle",         icon: "🌦️" };
+              if (code <= 69)             return { label: "Rainy",           icon: "🌧️" };
+              if (code <= 79)             return { label: "Snowy",           icon: "❄️" };
+              if (code <= 84)             return { label: "Rain showers",    icon: "🌦️" };
+              if (code <= 99)             return { label: "Thunderstorm",    icon: "⛈️" };
+              return { label: "Cloudy", icon: "☁️" };
+            };
+
+            const { label, icon } = getCondition(code);
+            const isRaining = code >= 50 && code <= 99;
+            const isTooHot  = temp >= 38;
+            const isWindy   = wind >= 40;
+            const isOutdoorFriendly = !isRaining && !isTooHot;
+
+            let warning = null;
+            if (isRaining)      warning = "Rain expected — indoor venues recommended";
+            else if (isTooHot)  warning = `${temp}°C — very hot, prefer air-conditioned venues`;
+            else if (isWindy)   warning = "Strong winds today, avoid open spaces";
+
+            setWeather({ temp, condition: label, icon, isOutdoorFriendly, warning, rain, wind });
+          } catch {
+            // Weather fetch failed silently — not critical
+          }
         } catch {
           // Even if reverse geocoding fails, keep the coords
           setUserLocation({ lat, lng, name: "Your location" });
@@ -737,6 +783,12 @@ export default function FunPlanner() {
           prompt,
           location: userLocation ? `${userLocation.name}, Hyderabad` : "Hyderabad",
           user_coords: userLocation ? { lat: userLocation.lat, lng: userLocation.lng } : null,
+          weather: weather ? {
+            temp: weather.temp,
+            condition: weather.condition,
+            is_outdoor_friendly: weather.isOutdoorFriendly,
+            warning: weather.warning,
+          } : null,
         }),
       });
 
@@ -917,9 +969,25 @@ export default function FunPlanner() {
                : locationStatus === "denied"   ? "❌ Location denied"
                : "📍 Use my location"}
             </button>
+            {locationStatus === "found" && weather && (
+              <div style={{
+                display: "flex", alignItems: "center", gap: "6px",
+                fontSize: "12px", fontFamily: "'DM Sans', sans-serif",
+                padding: "6px 12px", borderRadius: "8px",
+                background: weather.isOutdoorFriendly
+                  ? "rgba(52,211,153,0.08)" : "rgba(251,191,36,0.08)",
+                border: weather.isOutdoorFriendly
+                  ? "1px solid rgba(52,211,153,0.25)" : "1px solid rgba(251,191,36,0.25)",
+                color: weather.isOutdoorFriendly ? "#34d399" : "#fbbf24",
+              }}>
+                <span style={{ fontSize: "14px" }}>{weather.icon}</span>
+                <span>{weather.temp}°C · {weather.condition}</span>
+              </div>
+            )}
+
             {locationStatus === "found" && (
               <button
-                onClick={() => { setUserLocation(null); setLocationStatus("idle"); }}
+                onClick={() => { setUserLocation(null); setLocationStatus("idle"); setWeather(null); }}
                 style={{
                   background: "none", border: "none", color: "#475569",
                   fontSize: "11px", cursor: "pointer", fontFamily: "'DM Sans', sans-serif",
@@ -934,6 +1002,18 @@ export default function FunPlanner() {
               </span>
             )}
           </div>
+
+          {/* Weather warning banner */}
+          {weather?.warning && (
+            <div style={{
+              display: "flex", alignItems: "center", gap: "8px",
+              background: "rgba(251,191,36,0.07)", border: "1px solid rgba(251,191,36,0.2)",
+              borderRadius: "8px", padding: "8px 12px", marginBottom: "12px",
+              fontSize: "12px", color: "#fbbf24", fontFamily: "'DM Sans', sans-serif",
+            }}>
+              <span>⚠️</span> {weather.warning}
+            </div>
+          )}
 
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span style={{ fontSize: "11px", color: "#2d3748", fontFamily: "'DM Mono', monospace" }}>⌘ Enter to plan</span>

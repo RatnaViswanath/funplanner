@@ -148,6 +148,7 @@ async def run_planner_agent(
     user_prompt: str,
     location: str = "Hyderabad",
     user_coords: dict | None = None,
+    weather: dict | None = None,
 ) -> AsyncGenerator[dict, None]:
     """
     Core agentic loop. Yields event dicts:
@@ -173,6 +174,14 @@ async def run_planner_agent(
         location_context = (
             f"\n\n[SYSTEM NOTE: The user's starting location is {location}. "
             f"Begin the itinerary from this area and prefer nearby venues.]\n\n"
+        )
+
+    # Append weather context if available
+    if weather:
+        outdoor_note = "OUTDOOR ACTIVITIES ARE FINE today." if weather.get("is_outdoor_friendly") else f"WARNING: {weather.get('warning', 'Bad weather')} — AVOID outdoor parks and open venues. Prefer malls, cinemas, indoor restaurants, museums."
+        location_context += (
+            f"[WEATHER NOTE: Current weather at user's location is {weather.get('temp')}°C, "
+            f"{weather.get('condition')}. {outdoor_note}]\n\n"
         )
 
     augmented_prompt = location_context + user_prompt
