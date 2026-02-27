@@ -547,6 +547,94 @@ function InsightsPanel({ result, promptText }) {
   );
 }
 
+// ─── Selected Plan Detail ─────────────────────────────────────────────────────
+function SelectedPlanDetail({ plan, prompt, budgetColors }) {
+  if (!plan) return null;
+  return (
+    <>
+      {/* Summary + Budget header */}
+      <div style={{
+        background: "linear-gradient(135deg, rgba(251,191,36,0.07), rgba(249,115,22,0.07))",
+        border: "1px solid rgba(251,191,36,0.18)",
+        borderRadius: "16px", padding: "22px", marginBottom: "28px",
+      }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "16px" }}>
+          <div>
+            <div style={{ fontSize: "10px", letterSpacing: "2.5px", textTransform: "uppercase", color: "#fbbf24", fontFamily: "'DM Mono', monospace", marginBottom: "8px" }}>
+              {plan.planEmoji} {plan.planTitle}
+            </div>
+            <div style={{ fontSize: "15px", color: "#cbd5e1", lineHeight: 1.6, maxWidth: "460px" }}>
+              {plan.summary}
+            </div>
+          </div>
+          <div style={{ textAlign: "right", flexShrink: 0 }}>
+            <div style={{ fontSize: "10px", color: "#475569", marginBottom: "4px", fontFamily: "'DM Mono', monospace" }}>TOTAL</div>
+            <div style={{ fontSize: "32px", fontWeight: 800, fontFamily: "'Syne', sans-serif", color: "#fbbf24", lineHeight: 1 }}>
+              ₹{plan.totalEstimatedCost}
+            </div>
+          </div>
+        </div>
+        {plan.budgetBreakdown && (
+          <div style={{ marginTop: "18px", display: "flex", gap: "8px", flexWrap: "wrap" }}>
+            {Object.entries(plan.budgetBreakdown).map(([k, v]) => (
+              <div key={k} style={{
+                fontSize: "12px", fontFamily: "'DM Mono', monospace",
+                padding: "4px 12px", borderRadius: "20px",
+                color: budgetColors[k] || "#94a3b8",
+                background: `${budgetColors[k] || "#94a3b8"}12`,
+                border: `1px solid ${budgetColors[k] || "#94a3b8"}30`,
+              }}>
+                {k} ₹{v}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <InsightsPanel result={plan} promptText={prompt} />
+
+      <div style={{ fontSize: "10px", letterSpacing: "2.5px", textTransform: "uppercase", color: "#334155", fontFamily: "'DM Mono', monospace", marginBottom: "18px" }}>
+        Hourly Itinerary
+      </div>
+
+      {plan.itinerary?.map((item, i) => (
+        <TimelineCard key={i} item={item} index={i} />
+      ))}
+
+      {plan.tips?.length > 0 && (
+        <div style={{
+          marginTop: "22px",
+          background: "rgba(6,182,212,0.05)", border: "1px solid rgba(6,182,212,0.18)",
+          borderRadius: "12px", padding: "18px 20px",
+        }}>
+          <div style={{ fontSize: "10px", letterSpacing: "2.5px", textTransform: "uppercase", color: "#06b6d4", fontFamily: "'DM Mono', monospace", marginBottom: "10px" }}>
+            Insider Tips
+          </div>
+          {plan.tips.map((tip, i) => (
+            <div key={i} style={{ fontSize: "13px", color: "#94a3b8", marginBottom: "7px", display: "flex", gap: "8px", lineHeight: 1.5 }}>
+              <span style={{ color: "#06b6d4", flexShrink: 0 }}>→</span> {tip}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {plan.sources && (
+        <div style={{ marginTop: "16px", display: "flex", gap: "8px", flexWrap: "wrap" }}>
+          {Object.entries(plan.sources).map(([k, v]) => (
+            <div key={k} style={{
+              fontSize: "11px", color: "#334155", fontFamily: "'DM Mono', monospace",
+              padding: "3px 10px", borderRadius: "4px",
+              background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)",
+            }}>
+              {k}: {v}
+            </div>
+          ))}
+        </div>
+      )}
+    </>
+  );
+}
+
 export default function FunPlanner() {
   const [prompt, setPrompt]           = useState("");
   const [isLoading, setIsLoading]     = useState(false);
@@ -957,99 +1045,12 @@ export default function FunPlanner() {
               })}
             </div>
 
-            {/* Selected plan detail */}
-            {selectedPlan !== null && plans[selectedPlan] && (() => {
-              const result = plans[selectedPlan];
-              return (
-                <>
-                  {/* Summary + Budget header */}
-                  <div style={{
-                    background: "linear-gradient(135deg, rgba(251,191,36,0.07), rgba(249,115,22,0.07))",
-                    border: "1px solid rgba(251,191,36,0.18)",
-                    borderRadius: "16px", padding: "22px", marginBottom: "28px",
-                  }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "16px" }}>
-                      <div>
-                        <div style={{ fontSize: "10px", letterSpacing: "2.5px", textTransform: "uppercase", color: "#fbbf24", fontFamily: "'DM Mono', monospace", marginBottom: "8px" }}>
-                          {result.planEmoji} {result.planTitle}
-                        </div>
-                        <div style={{ fontSize: "15px", color: "#cbd5e1", lineHeight: 1.6, maxWidth: "460px" }}>
-                          {result.summary}
-                        </div>
-                      </div>
-                      <div style={{ textAlign: "right", flexShrink: 0 }}>
-                        <div style={{ fontSize: "10px", color: "#475569", marginBottom: "4px", fontFamily: "'DM Mono', monospace" }}>TOTAL</div>
-                        <div style={{ fontSize: "32px", fontWeight: 800, fontFamily: "'Syne', sans-serif", color: "#fbbf24", lineHeight: 1 }}>
-                          ₹{result.totalEstimatedCost}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Budget breakdown pills */}
-                    {result.budgetBreakdown && (
-                      <div style={{ marginTop: "18px", display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                        {Object.entries(result.budgetBreakdown).map(([k, v]) => (
-                          <div key={k} style={{
-                            fontSize: "12px", fontFamily: "'DM Mono', monospace",
-                            padding: "4px 12px", borderRadius: "20px",
-                            color: budgetColors[k] || "#94a3b8",
-                            background: `${budgetColors[k] || "#94a3b8"}12`,
-                            border: `1px solid ${budgetColors[k] || "#94a3b8"}30`,
-                          }}>
-                            {k} ₹{v}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Time & Money Insights */}
-                  <InsightsPanel result={result} promptText={prompt} />
-
-                  {/* Itinerary timeline */}
-                  <div style={{ fontSize: "10px", letterSpacing: "2.5px", textTransform: "uppercase", color: "#334155", fontFamily: "'DM Mono', monospace", marginBottom: "18px" }}>
-                    Hourly Itinerary
-                  </div>
-
-                  {result.itinerary?.map((item, i) => (
-                    <TimelineCard key={i} item={item} index={i} />
-                  ))}
-
-                  {/* Tips */}
-                  {result.tips?.length > 0 && (
-                    <div style={{
-                      marginTop: "22px",
-                      background: "rgba(6,182,212,0.05)", border: "1px solid rgba(6,182,212,0.18)",
-                      borderRadius: "12px", padding: "18px 20px",
-                    }}>
-                      <div style={{ fontSize: "10px", letterSpacing: "2.5px", textTransform: "uppercase", color: "#06b6d4", fontFamily: "'DM Mono', monospace", marginBottom: "10px" }}>
-                        Insider Tips
-                      </div>
-                      {result.tips.map((tip, i) => (
-                        <div key={i} style={{ fontSize: "13px", color: "#94a3b8", marginBottom: "7px", display: "flex", gap: "8px", lineHeight: 1.5 }}>
-                          <span style={{ color: "#06b6d4", flexShrink: 0 }}>→</span> {tip}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Data sources */}
-                  {result.sources && (
-                    <div style={{ marginTop: "16px", display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                      {Object.entries(result.sources).map(([k, v]) => (
-                        <div key={k} style={{
-                          fontSize: "11px", color: "#334155", fontFamily: "'DM Mono', monospace",
-                          padding: "3px 10px", borderRadius: "4px",
-                          background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)",
-                        }}>
-                          {k}: {v}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </>
-              );
-            })()}
+            {/* Selected plan detail — clean component, no IIFE */}
+            <SelectedPlanDetail
+              plan={selectedPlan !== null ? plans[selectedPlan] : null}
+              prompt={prompt}
+              budgetColors={budgetColors}
+            />
 
             {/* Re-plan */}
             <div style={{ textAlign: "center", marginTop: "36px" }}>
@@ -1066,6 +1067,7 @@ export default function FunPlanner() {
             </div>
           </div>
         )}
+
       </div>
     </div>
   );
