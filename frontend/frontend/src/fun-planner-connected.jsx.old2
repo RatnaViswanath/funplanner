@@ -300,59 +300,6 @@ export default function FunPlanner() {
   const [error, setError]             = useState(null);
   const resultRef                     = useRef(null);
 
-  // Location state
-  const [userLocation, setUserLocation]         = useState(null);   // { lat, lng, name }
-  const [locationStatus, setLocationStatus]     = useState("idle"); // idle | detecting | found | denied
-  const [locationError, setLocationError]       = useState(null);
-
-  const detectLocation = async () => {
-    if (!navigator.geolocation) {
-      setLocationError("Geolocation not supported by your browser.");
-      return;
-    }
-    setLocationStatus("detecting");
-    setLocationError(null);
-
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        const { latitude: lat, longitude: lng } = pos.coords;
-        // Reverse geocode using free Nominatim API (no key needed)
-        try {
-          const res = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=14`,
-            { headers: { "Accept-Language": "en" } }
-          );
-          const data = await res.json();
-          const addr = data.address || {};
-          // Build a human-readable neighbourhood name
-          const name =
-            addr.suburb ||
-            addr.neighbourhood ||
-            addr.quarter ||
-            addr.city_district ||
-            addr.county ||
-            addr.city ||
-            "Your location";
-          setUserLocation({ lat, lng, name });
-          setLocationStatus("found");
-        } catch {
-          // Even if reverse geocoding fails, keep the coords
-          setUserLocation({ lat, lng, name: "Your location" });
-          setLocationStatus("found");
-        }
-      },
-      (err) => {
-        setLocationStatus("denied");
-        setLocationError(
-          err.code === 1
-            ? "Location access denied. Allow location in your browser settings."
-            : "Could not detect location. Please mention your area in the prompt."
-        );
-      },
-      { timeout: 10000, maximumAge: 300000 }
-    );
-  };
-
   useEffect(() => {
     const style = document.createElement("style");
     style.textContent = `
@@ -388,11 +335,7 @@ export default function FunPlanner() {
       const response = await fetch(`${API_BASE}/plan`, {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({
-          prompt,
-          location: userLocation ? `${userLocation.name}, Hyderabad` : "Hyderabad",
-          user_coords: userLocation ? { lat: userLocation.lat, lng: userLocation.lng } : null,
-        }),
+        body:    JSON.stringify({ prompt, location: "Hyderabad" }),
       });
 
       if (!response.ok) throw new Error(`Server error: ${response.status}`);
@@ -511,10 +454,7 @@ export default function FunPlanner() {
           <textarea
             value={prompt}
             onChange={e => setPrompt(e.target.value)}
-            placeholder={userLocation
-              ? `e.g. I'm free this Sunday, budget ₹1500, 2pm to 7pm. I like biryani and movies.`
-              : "e.g. I'm bored on a weekday afternoon, want to spend 4-6 hours in Hyderabad within ₹2000. I like biryani and action movies."
-            }
+            placeholder={"e.g. I'm bored on a weekday afternoon, want to spend 4-6 hours in Hyderabad within ₹2000. I like biryani and action movies."}
             rows={3}
             style={{
               width: "100%", background: "transparent", border: "none", outline: "none",
@@ -542,51 +482,6 @@ export default function FunPlanner() {
                 {p.slice(0, 38)}…
               </button>
             ))}
-          </div>
-
-          {/* Location detector row */}
-          <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "14px" }}>
-            <button
-              onClick={detectLocation}
-              disabled={locationStatus === "detecting"}
-              style={{
-                display: "flex", alignItems: "center", gap: "6px",
-                background: locationStatus === "found"
-                  ? "rgba(52,211,153,0.1)"
-                  : "rgba(255,255,255,0.04)",
-                border: locationStatus === "found"
-                  ? "1px solid rgba(52,211,153,0.35)"
-                  : "1px solid rgba(255,255,255,0.08)",
-                borderRadius: "8px",
-                color: locationStatus === "found" ? "#34d399"
-                     : locationStatus === "denied" ? "#f87171"
-                     : "#64748b",
-                fontSize: "12px", fontFamily: "'DM Sans', sans-serif",
-                padding: "6px 12px", cursor: locationStatus === "detecting" ? "wait" : "pointer",
-                transition: "all 0.2s",
-              }}
-            >
-              {locationStatus === "detecting" ? "📡 Detecting…"
-               : locationStatus === "found"    ? `📍 ${userLocation.name}`
-               : locationStatus === "denied"   ? "❌ Location denied"
-               : "📍 Use my location"}
-            </button>
-            {locationStatus === "found" && (
-              <button
-                onClick={() => { setUserLocation(null); setLocationStatus("idle"); }}
-                style={{
-                  background: "none", border: "none", color: "#475569",
-                  fontSize: "11px", cursor: "pointer", fontFamily: "'DM Sans', sans-serif",
-                }}
-              >
-                ✕ clear
-              </button>
-            )}
-            {locationError && (
-              <span style={{ fontSize: "11px", color: "#f87171", fontFamily: "'DM Sans', sans-serif" }}>
-                {locationError}
-              </span>
-            )}
           </div>
 
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>

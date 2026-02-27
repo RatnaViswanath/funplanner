@@ -9,6 +9,7 @@ Streams events to the caller so the frontend can animate each step.
 
 import os
 import json
+import re
 import asyncio
 from typing import AsyncGenerator
 import anthropic
@@ -31,6 +32,17 @@ BUDGET RULES:
 - Total cost of all activities + food + travel MUST fit within the user's stated budget
 - Be conservative: always leave ₹100-200 buffer for miscellaneous spending
 - Ticket prices + restaurant cost + travel cost = check they sum below budget
+
+PROXIMITY RULES — CRITICAL:
+- Total travel time across the entire day MUST be under 25% of the available time window
+  Example: 4-hour window → max 60 mins total travel. 6-hour window → max 90 mins total travel.
+- ALWAYS pass user_lat and user_lng to search_restaurants and search_places tool calls
+- Prefer places within 8-10 km of the user's starting location
+- If the user is in north Hyderabad (Jeedimetla, Kompally, Medchal), suggest north-side venues
+- If the user is in west Hyderabad (HITEC City, Kondapur, Gachibowli), suggest west-side venues
+- If the user is in south Hyderabad (LB Nagar, Dilsukhnagar), suggest south-side venues
+- NEVER recommend Golconda Fort, Charminar, or Hussain Sagar to a user who is 20+ km away unless they specifically ask
+- Famous landmarks are NOT always the best choice — a good nearby park beats a far-away monument
 
 OUTPUT FORMAT:
 After all tool calls, respond ONLY with this exact JSON (no markdown, no extra text):
@@ -56,12 +68,27 @@ After all tool calls, respond ONLY with this exact JSON (no markdown, no extra t
       "link": "https://maps.google.com/?q=Paradise+Biryani"
     },
     {
+      "time": "3:00 PM",
+      "title": "Action Movie at PVR",
+      "category": "movie",
+      "location": "PVR INOX GVK One, Banjara Hills",
+      "cost": 350,
+      "rating": 8.2,
+      "movie_title": "Exact Movie Name Here",
+      "description": "Latest action blockbuster. 2h 20m duration. Book tickets on BookMyShow.",
+      "link": "https://in.bookmyshow.com/search?q=movie+name"
+    },
+    {
       "time": "1:30 PM",
       "title": "Travel to Hussain Sagar",
       "category": "travel",
       "location": "Secunderabad → Tank Bund Road",
       "cost": 80,
-      "description": "Take Uber/Ola. ~15 min ride. Pre-book on app for best fare."
+      "description": "Take Uber/Ola. ~15 min ride. Pre-book on app for best fare.",
+      "pickup_coords": { "lat": 17.4399, "lng": 78.4983 },
+      "dropoff_coords": { "lat": 17.4239, "lng": 78.4738 },
+      "dropoff_name": "Hussain Sagar Lake",
+      "estimated_fare": "₹80-120"
     }
   ],
   "tips": [
@@ -78,6 +105,8 @@ After all tool calls, respond ONLY with this exact JSON (no markdown, no extra t
 
 Categories: "food", "movie", "place", "travel", "shopping", "entertainment"
 Always include travel steps between locations with realistic Uber/Ola cost.
+For ALL travel steps, always include pickup_coords, dropoff_coords (lat/lng), dropoff_name, and estimated_fare so users can deep-link directly into Uber/Ola apps.
+For ALL movie steps, always include movie_title (the exact film name, not the venue) so users can search it directly on BookMyShow.
 """
 
 
@@ -93,6 +122,7 @@ TOOL_LABELS = {
 async def run_planner_agent(
     user_prompt: str,
     location: str = "Hyderabad",
+    user_coords: dict | None = None,
 ) -> AsyncGenerator[dict, None]:
     """
     Core agentic loop. Yields event dicts:
@@ -101,7 +131,27 @@ async def run_planner_agent(
       {"type": "final_plan", "plan": {...}}
       {"type": "error", "message": "..."}
     """
-    messages = [{"role": "user", "content": user_prompt}]
+    # Inject user location explicitly at the top of the message
+    location_context = ""
+    if user_coords:
+        location_context = (
+            f"\n\n[SYSTEM NOTE: The user's EXACT current GPS location is {location} "
+            f"(coordinates: lat={user_coords['lat']:.4f}, lng={user_coords['lng']:.4f}). "
+            f"MANDATORY INSTRUCTIONS:\n"
+            f"1. Start the itinerary from this location.\n"
+            f"2. When calling search_restaurants, pass user_lat={user_coords['lat']:.4f} and user_lng={user_coords['lng']:.4f}.\n"
+            f"3. When calling search_places, pass user_lat={user_coords['lat']:.4f} and user_lng={user_coords['lng']:.4f}.\n"
+            f"4. Only suggest places within 10km of this location unless the user explicitly asks for far destinations.\n"
+            f"5. Use these coordinates as pickup_coords for the first travel step.]\n\n"
+        )
+    elif location and location != "Hyderabad":
+        location_context = (
+            f"\n\n[SYSTEM NOTE: The user's starting location is {location}. "
+            f"Begin the itinerary from this area and prefer nearby venues.]\n\n"
+        )
+
+    augmented_prompt = location_context + user_prompt
+    messages = [{"role": "user", "content": augmented_prompt}]
 
     yield {"type": "agent_step", "label": "🧠  Parsing your request and deciding what to search..."}
     await asyncio.sleep(0.1)
@@ -125,11 +175,16 @@ async def run_planner_agent(
             for block in response.content:
                 if hasattr(block, "text"):
                     try:
-                        plan = json.loads(block.text.strip())
+                        raw = block.text.strip()
+                        # Strip markdown code fences if Claude wrapped the JSON
+                        if raw.startswith("```"):
+                            raw = re.sub(r"^```(?:json)?\s*", "", raw)
+                            raw = re.sub(r"\s*```$", "", raw.strip())
+                        plan = json.loads(raw)
                         yield {"type": "final_plan", "plan": plan}
                         return
-                    except json.JSONDecodeError:
-                        yield {"type": "error", "message": "Failed to parse plan JSON from Claude."}
+                    except json.JSONDecodeError as e:
+                        yield {"type": "error", "message": f"Failed to parse plan JSON: {str(e)[:120]}. Raw: {block.text[:300]}"}
                         return
             yield {"type": "error", "message": "No text response from Claude."}
             return

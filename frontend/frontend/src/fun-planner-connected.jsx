@@ -551,7 +551,8 @@ export default function FunPlanner() {
   const [prompt, setPrompt]           = useState("");
   const [isLoading, setIsLoading]     = useState(false);
   const [steps, setSteps]             = useState([]);
-  const [result, setResult]           = useState(null);
+  const [plans, setPlans]             = useState([]);   // array of plan options
+  const [selectedPlan, setSelectedPlan] = useState(null); // chosen plan index
   const [error, setError]             = useState(null);
   const resultRef                     = useRef(null);
 
@@ -627,15 +628,16 @@ export default function FunPlanner() {
 
   // Scroll to results
   useEffect(() => {
-    if (result && resultRef.current) {
+    if (plans.length > 0 && resultRef.current) {
       setTimeout(() => resultRef.current.scrollIntoView({ behavior: "smooth", block: "start" }), 200);
     }
-  }, [result]);
+  }, [plans]);
 
   const handleSubmit = async () => {
     if (!prompt.trim() || isLoading) return;
     setIsLoading(true);
-    setResult(null);
+    setPlans([]);
+    setSelectedPlan(null);
     setError(null);
     setSteps([]);
 
@@ -689,9 +691,10 @@ export default function FunPlanner() {
               setSteps(prev => prev.map(s => ({ ...s, done: true })));
             }
 
-            if (event.type === "final_plan") {
+            if (event.type === "final_plans") {
               setSteps(prev => prev.map(s => ({ ...s, done: true })));
-              setResult(event.plan);
+              setPlans(event.plans);
+              setSelectedPlan(0); // auto-select first plan
             }
 
             if (event.type === "error") {
@@ -900,99 +903,158 @@ export default function FunPlanner() {
         )}
 
         {/* ── RESULTS ── */}
-        {result && (
+        {plans.length > 0 && (
           <div ref={resultRef} style={{ animation: "slideUp 0.5s ease" }}>
 
-            {/* Summary + Budget header */}
-            <div style={{
-              background: "linear-gradient(135deg, rgba(251,191,36,0.07), rgba(249,115,22,0.07))",
-              border: "1px solid rgba(251,191,36,0.18)",
-              borderRadius: "16px", padding: "22px", marginBottom: "28px",
-            }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "16px" }}>
-                <div>
-                  <div style={{ fontSize: "10px", letterSpacing: "2.5px", textTransform: "uppercase", color: "#fbbf24", fontFamily: "'DM Mono', monospace", marginBottom: "8px" }}>
-                    Your Plan is Ready
-                  </div>
-                  <div style={{ fontSize: "15px", color: "#cbd5e1", lineHeight: 1.6, maxWidth: "460px" }}>
-                    {result.summary}
-                  </div>
-                </div>
-                <div style={{ textAlign: "right", flexShrink: 0 }}>
-                  <div style={{ fontSize: "10px", color: "#475569", marginBottom: "4px", fontFamily: "'DM Mono', monospace" }}>TOTAL</div>
-                  <div style={{ fontSize: "32px", fontWeight: 800, fontFamily: "'Syne', sans-serif", color: "#fbbf24", lineHeight: 1 }}>
-                    ₹{result.totalEstimatedCost}
-                  </div>
-                </div>
-              </div>
+            {/* Plan picker header */}
+            <div style={{ fontSize: "10px", letterSpacing: "2.5px", textTransform: "uppercase", color: "#334155", fontFamily: "'DM Mono', monospace", marginBottom: "14px" }}>
+              Choose Your Plan
+            </div>
 
-              {/* Budget breakdown pills */}
-              {result.budgetBreakdown && (
-                <div style={{ marginTop: "18px", display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                  {Object.entries(result.budgetBreakdown).map(([k, v]) => (
-                    <div key={k} style={{
-                      fontSize: "12px", fontFamily: "'DM Mono', monospace",
-                      padding: "4px 12px", borderRadius: "20px",
-                      color: budgetColors[k] || "#94a3b8",
-                      background: `${budgetColors[k] || "#94a3b8"}12`,
-                      border: `1px solid ${budgetColors[k] || "#94a3b8"}30`,
-                    }}>
-                      {k} ₹{v}
+            {/* Plan selection cards */}
+            <div style={{ display: "flex", gap: "12px", marginBottom: "28px", flexWrap: "wrap" }}>
+              {plans.map((plan, i) => {
+                const isSelected = selectedPlan === i;
+                return (
+                  <div
+                    key={i}
+                    onClick={() => setSelectedPlan(i)}
+                    style={{
+                      flex: "1 1 180px", minWidth: "160px", maxWidth: "240px",
+                      background: isSelected
+                        ? "linear-gradient(135deg, rgba(251,191,36,0.12), rgba(249,115,22,0.10))"
+                        : "rgba(255,255,255,0.025)",
+                      border: isSelected
+                        ? "1.5px solid rgba(251,191,36,0.5)"
+                        : "1px solid rgba(255,255,255,0.07)",
+                      borderRadius: "14px", padding: "16px",
+                      cursor: "pointer",
+                      transition: "all 0.2s",
+                      transform: isSelected ? "translateY(-2px)" : "none",
+                      boxShadow: isSelected ? "0 4px 20px rgba(251,191,36,0.12)" : "none",
+                    }}
+                  >
+                    <div style={{ fontSize: "22px", marginBottom: "6px" }}>{plan.planEmoji}</div>
+                    <div style={{ fontSize: "13px", fontWeight: 700, fontFamily: "'Syne', sans-serif", color: isSelected ? "#fbbf24" : "#e2e8f0", marginBottom: "4px" }}>
+                      {plan.planTitle}
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Time & Money Insights */}
-            <InsightsPanel result={result} promptText={prompt} />
-
-            {/* Itinerary timeline */}
-            <div style={{ fontSize: "10px", letterSpacing: "2.5px", textTransform: "uppercase", color: "#334155", fontFamily: "'DM Mono', monospace", marginBottom: "18px" }}>
-              Hourly Itinerary
-            </div>
-
-            {result.itinerary?.map((item, i) => (
-              <TimelineCard key={i} item={item} index={i} />
-            ))}
-
-            {/* Tips */}
-            {result.tips?.length > 0 && (
-              <div style={{
-                marginTop: "22px",
-                background: "rgba(6,182,212,0.05)", border: "1px solid rgba(6,182,212,0.18)",
-                borderRadius: "12px", padding: "18px 20px",
-              }}>
-                <div style={{ fontSize: "10px", letterSpacing: "2.5px", textTransform: "uppercase", color: "#06b6d4", fontFamily: "'DM Mono', monospace", marginBottom: "10px" }}>
-                  Insider Tips
-                </div>
-                {result.tips.map((tip, i) => (
-                  <div key={i} style={{ fontSize: "13px", color: "#94a3b8", marginBottom: "7px", display: "flex", gap: "8px", lineHeight: 1.5 }}>
-                    <span style={{ color: "#06b6d4", flexShrink: 0 }}>→</span> {tip}
+                    <div style={{ fontSize: "11px", color: "#64748b", fontFamily: "'DM Sans', sans-serif", marginBottom: "12px", lineHeight: 1.4 }}>
+                      {plan.planTagline}
+                    </div>
+                    <div style={{ fontSize: "20px", fontWeight: 800, fontFamily: "'Syne', sans-serif", color: isSelected ? "#fbbf24" : "#94a3b8" }}>
+                      ₹{plan.totalEstimatedCost}
+                    </div>
+                    <div style={{ fontSize: "10px", color: "#475569", fontFamily: "'DM Mono', monospace", marginTop: "2px" }}>
+                      {plan.itinerary?.filter(x => x.category !== "travel").length || 0} stops
+                    </div>
+                    {isSelected && (
+                      <div style={{ marginTop: "10px", fontSize: "10px", color: "#fbbf24", fontFamily: "'DM Mono', monospace", letterSpacing: "1px" }}>
+                        ● SELECTED
+                      </div>
+                    )}
                   </div>
-                ))}
-              </div>
-            )}
+                );
+              })}
+            </div>
 
-            {/* Data sources */}
-            {result.sources && (
-              <div style={{ marginTop: "16px", display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                {Object.entries(result.sources).map(([k, v]) => (
-                  <div key={k} style={{
-                    fontSize: "11px", color: "#334155", fontFamily: "'DM Mono', monospace",
-                    padding: "3px 10px", borderRadius: "4px",
-                    background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)",
+            {/* Selected plan detail */}
+            {selectedPlan !== null && plans[selectedPlan] && (() => {
+              const result = plans[selectedPlan];
+              return (
+                <>
+                  {/* Summary + Budget header */}
+                  <div style={{
+                    background: "linear-gradient(135deg, rgba(251,191,36,0.07), rgba(249,115,22,0.07))",
+                    border: "1px solid rgba(251,191,36,0.18)",
+                    borderRadius: "16px", padding: "22px", marginBottom: "28px",
                   }}>
-                    {k}: {v}
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "16px" }}>
+                      <div>
+                        <div style={{ fontSize: "10px", letterSpacing: "2.5px", textTransform: "uppercase", color: "#fbbf24", fontFamily: "'DM Mono', monospace", marginBottom: "8px" }}>
+                          {result.planEmoji} {result.planTitle}
+                        </div>
+                        <div style={{ fontSize: "15px", color: "#cbd5e1", lineHeight: 1.6, maxWidth: "460px" }}>
+                          {result.summary}
+                        </div>
+                      </div>
+                      <div style={{ textAlign: "right", flexShrink: 0 }}>
+                        <div style={{ fontSize: "10px", color: "#475569", marginBottom: "4px", fontFamily: "'DM Mono', monospace" }}>TOTAL</div>
+                        <div style={{ fontSize: "32px", fontWeight: 800, fontFamily: "'Syne', sans-serif", color: "#fbbf24", lineHeight: 1 }}>
+                          ₹{result.totalEstimatedCost}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Budget breakdown pills */}
+                    {result.budgetBreakdown && (
+                      <div style={{ marginTop: "18px", display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                        {Object.entries(result.budgetBreakdown).map(([k, v]) => (
+                          <div key={k} style={{
+                            fontSize: "12px", fontFamily: "'DM Mono', monospace",
+                            padding: "4px 12px", borderRadius: "20px",
+                            color: budgetColors[k] || "#94a3b8",
+                            background: `${budgetColors[k] || "#94a3b8"}12`,
+                            border: `1px solid ${budgetColors[k] || "#94a3b8"}30`,
+                          }}>
+                            {k} ₹{v}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                ))}
-              </div>
-            )}
+
+                  {/* Time & Money Insights */}
+                  <InsightsPanel result={result} promptText={prompt} />
+
+                  {/* Itinerary timeline */}
+                  <div style={{ fontSize: "10px", letterSpacing: "2.5px", textTransform: "uppercase", color: "#334155", fontFamily: "'DM Mono', monospace", marginBottom: "18px" }}>
+                    Hourly Itinerary
+                  </div>
+
+                  {result.itinerary?.map((item, i) => (
+                    <TimelineCard key={i} item={item} index={i} />
+                  ))}
+
+                  {/* Tips */}
+                  {result.tips?.length > 0 && (
+                    <div style={{
+                      marginTop: "22px",
+                      background: "rgba(6,182,212,0.05)", border: "1px solid rgba(6,182,212,0.18)",
+                      borderRadius: "12px", padding: "18px 20px",
+                    }}>
+                      <div style={{ fontSize: "10px", letterSpacing: "2.5px", textTransform: "uppercase", color: "#06b6d4", fontFamily: "'DM Mono', monospace", marginBottom: "10px" }}>
+                        Insider Tips
+                      </div>
+                      {result.tips.map((tip, i) => (
+                        <div key={i} style={{ fontSize: "13px", color: "#94a3b8", marginBottom: "7px", display: "flex", gap: "8px", lineHeight: 1.5 }}>
+                          <span style={{ color: "#06b6d4", flexShrink: 0 }}>→</span> {tip}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Data sources */}
+                  {result.sources && (
+                    <div style={{ marginTop: "16px", display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                      {Object.entries(result.sources).map(([k, v]) => (
+                        <div key={k} style={{
+                          fontSize: "11px", color: "#334155", fontFamily: "'DM Mono', monospace",
+                          padding: "3px 10px", borderRadius: "4px",
+                          background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)",
+                        }}>
+                          {k}: {v}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              );
+            })()}
 
             {/* Re-plan */}
             <div style={{ textAlign: "center", marginTop: "36px" }}>
               <button
-                onClick={() => { setResult(null); setSteps([]); setPrompt(""); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                onClick={() => { setPlans([]); setSelectedPlan(null); setSteps([]); setPrompt(""); window.scrollTo({ top: 0, behavior: "smooth" }); }}
                 style={{
                   background: "transparent", border: "1px solid rgba(255,255,255,0.09)",
                   borderRadius: "8px", color: "#475569", padding: "10px 26px",

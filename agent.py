@@ -45,64 +45,89 @@ PROXIMITY RULES — CRITICAL:
 - Famous landmarks are NOT always the best choice — a good nearby park beats a far-away monument
 
 OUTPUT FORMAT:
-After all tool calls, respond ONLY with this exact JSON (no markdown, no extra text):
+After all tool calls, respond ONLY with this exact JSON (no markdown, no extra text).
+Generate exactly 3 DIFFERENT plan options. Each plan should have a distinct angle:
+- Plan 1: "Budget Smart" — maximise fun, minimise spend, use free/low-cost venues
+- Plan 2: "Best Experience" — best-rated venues, premium experience within budget  
+- Plan 3: "Relaxed & Easy" — fewest travel hops, low stress, close to home
+
 {
-  "summary": "Brief 1-sentence plan overview",
-  "totalEstimatedCost": 1500,
-  "budgetBreakdown": {
-    "food": 350,
-    "entertainment": 700,
-    "travel": 300,
-    "entry_fees": 100,
-    "misc": 50
-  },
-  "itinerary": [
+  "plans": [
     {
-      "time": "12:00 PM",
-      "title": "Lunch at Paradise Biryani",
-      "category": "food",
-      "location": "MG Road, Secunderabad",
-      "cost": 320,
-      "rating": 4.4,
-      "description": "Legendary Hyderabadi dum biryani. Order the mutton biryani. Expect a 10-min wait.",
-      "link": "https://maps.google.com/?q=Paradise+Biryani"
+      "planId": 1,
+      "planTitle": "Budget Smart",
+      "planEmoji": "💰",
+      "planTagline": "Maximum fun, minimum spend",
+      "summary": "Brief 1-sentence plan overview",
+      "totalEstimatedCost": 1200,
+      "budgetBreakdown": {
+        "food": 300,
+        "entertainment": 500,
+        "travel": 250,
+        "entry_fees": 100,
+        "misc": 50
+      },
+      "itinerary": [
+        {
+          "time": "12:00 PM",
+          "title": "Lunch at Local Dhaba",
+          "category": "food",
+          "location": "Near User Location",
+          "cost": 200,
+          "rating": 4.2,
+          "description": "Great value South Indian thali. Family-friendly.",
+          "link": "https://maps.google.com/?q=restaurant"
+        },
+        {
+          "time": "1:30 PM",
+          "title": "Travel to Park",
+          "category": "travel",
+          "location": "Home → Nearby Park",
+          "cost": 80,
+          "description": "Take Uber/Ola. ~15 min ride.",
+          "pickup_coords": { "lat": 17.4399, "lng": 78.4983 },
+          "dropoff_coords": { "lat": 17.4239, "lng": 78.4738 },
+          "dropoff_name": "Destination Park",
+          "estimated_fare": "₹80-100"
+        }
+      ],
+      "tips": ["Tip 1", "Tip 2"],
+      "sources": {
+        "restaurants": "Google Places API",
+        "movies": "BookMyShow via search",
+        "places": "Google Places API",
+        "travel": "Google Maps Distance Matrix"
+      }
     },
     {
-      "time": "3:00 PM",
-      "title": "Action Movie at PVR",
-      "category": "movie",
-      "location": "PVR INOX GVK One, Banjara Hills",
-      "cost": 350,
-      "rating": 8.2,
-      "movie_title": "Exact Movie Name Here",
-      "description": "Latest action blockbuster. 2h 20m duration. Book tickets on BookMyShow.",
-      "link": "https://in.bookmyshow.com/search?q=movie+name"
+      "planId": 2,
+      "planTitle": "Best Experience",
+      "planEmoji": "⭐",
+      "planTagline": "Top-rated venues, premium day out",
+      "summary": "...",
+      "totalEstimatedCost": 2200,
+      "budgetBreakdown": { "food": 600, "entertainment": 800, "travel": 500, "entry_fees": 200, "misc": 100 },
+      "itinerary": [],
+      "tips": [],
+      "sources": {}
     },
     {
-      "time": "1:30 PM",
-      "title": "Travel to Hussain Sagar",
-      "category": "travel",
-      "location": "Secunderabad → Tank Bund Road",
-      "cost": 80,
-      "description": "Take Uber/Ola. ~15 min ride. Pre-book on app for best fare.",
-      "pickup_coords": { "lat": 17.4399, "lng": 78.4983 },
-      "dropoff_coords": { "lat": 17.4239, "lng": 78.4738 },
-      "dropoff_name": "Hussain Sagar Lake",
-      "estimated_fare": "₹80-120"
+      "planId": 3,
+      "planTitle": "Relaxed & Easy",
+      "planEmoji": "😌",
+      "planTagline": "Stress-free, close to home",
+      "summary": "...",
+      "totalEstimatedCost": 1500,
+      "budgetBreakdown": { "food": 400, "entertainment": 600, "travel": 300, "entry_fees": 150, "misc": 50 },
+      "itinerary": [],
+      "tips": [],
+      "sources": {}
     }
-  ],
-  "tips": [
-    "Book movie tickets on BookMyShow app 30 mins before to skip queues",
-    "Use Hyderabad Metro where possible — cheaper and faster than cabs"
-  ],
-  "sources": {
-    "restaurants": "Google Places API",
-    "movies": "BookMyShow via search",
-    "places": "Google Places API",
-    "travel": "Google Maps Distance Matrix"
-  }
+  ]
 }
 
+IMPORTANT: All 3 plans must be FULLY detailed with complete itinerary arrays — not empty like the examples above.
+Each plan must use DIFFERENT venues, restaurants, and activities from each other.
 Categories: "food", "movie", "place", "travel", "shopping", "entertainment"
 Always include travel steps between locations with realistic Uber/Ola cost.
 For ALL travel steps, always include pickup_coords, dropoff_coords (lat/lng), dropoff_name, and estimated_fare so users can deep-link directly into Uber/Ola apps.
@@ -180,8 +205,13 @@ async def run_planner_agent(
                         if raw.startswith("```"):
                             raw = re.sub(r"^```(?:json)?\s*", "", raw)
                             raw = re.sub(r"\s*```$", "", raw.strip())
-                        plan = json.loads(raw)
-                        yield {"type": "final_plan", "plan": plan}
+                        parsed = json.loads(raw)
+                        # Support both multi-plan {"plans": [...]} and legacy single plan
+                        if "plans" in parsed:
+                            yield {"type": "final_plans", "plans": parsed["plans"]}
+                        else:
+                            # Wrap legacy single plan in plans array for backwards compat
+                            yield {"type": "final_plans", "plans": [{"planId": 1, "planTitle": "Your Plan", "planEmoji": "✨", "planTagline": "", **parsed}]}
                         return
                     except json.JSONDecodeError as e:
                         yield {"type": "error", "message": f"Failed to parse plan JSON: {str(e)[:120]}. Raw: {block.text[:300]}"}
