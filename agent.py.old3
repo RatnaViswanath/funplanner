@@ -110,7 +110,6 @@ TOOL_LABELS = {
 async def run_planner_agent(
     user_prompt: str,
     location: str = "Hyderabad",
-    user_coords: dict | None = None,
 ) -> AsyncGenerator[dict, None]:
     """
     Core agentic loop. Yields event dicts:
@@ -119,23 +118,7 @@ async def run_planner_agent(
       {"type": "final_plan", "plan": {...}}
       {"type": "error", "message": "..."}
     """
-    # Inject user location explicitly at the top of the message
-    location_context = ""
-    if user_coords:
-        location_context = (
-            f"\n\n[SYSTEM NOTE: The user's EXACT current GPS location is {location} "
-            f"(coordinates: {user_coords['lat']:.4f}, {user_coords['lng']:.4f}). "
-            f"You MUST start the itinerary from this location. Use these coordinates as "
-            f"pickup_coords for the first travel step. Do NOT substitute a different neighbourhood.]\n\n"
-        )
-    elif location and location != "Hyderabad":
-        location_context = (
-            f"\n\n[SYSTEM NOTE: The user's starting location is {location}. "
-            f"Begin the itinerary from this area.]\n\n"
-        )
-
-    augmented_prompt = location_context + user_prompt
-    messages = [{"role": "user", "content": augmented_prompt}]
+    messages = [{"role": "user", "content": user_prompt}]
 
     yield {"type": "agent_step", "label": "🧠  Parsing your request and deciding what to search..."}
     await asyncio.sleep(0.1)

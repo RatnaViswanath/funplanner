@@ -17,8 +17,8 @@ app = FastAPI(title="FunPlanner API", version="1.0.0")
 # ── CORS: allow your frontend origin ──────────────────────────────────────────
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],          # tighten in production
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -27,7 +27,6 @@ app.add_middleware(
 class PlanRequest(BaseModel):
     prompt: str
     location: str = "Hyderabad"
-    user_coords: dict | None = None
 
 
 @app.get("/health")
@@ -46,7 +45,7 @@ async def create_plan(req: PlanRequest):
         raise HTTPException(400, "Prompt cannot be empty")
 
     async def event_stream():
-        async for event in run_planner_agent(req.prompt, req.location, req.user_coords):
+        async for event in run_planner_agent(req.prompt, req.location):
             yield f"data: {json.dumps(event)}\n\n"
         yield "data: [DONE]\n\n"
 
