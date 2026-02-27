@@ -9,6 +9,7 @@ Streams events to the caller so the frontend can animate each step.
 
 import os
 import json
+import re
 import asyncio
 from typing import AsyncGenerator
 import anthropic
@@ -174,11 +175,16 @@ async def run_planner_agent(
             for block in response.content:
                 if hasattr(block, "text"):
                     try:
-                        plan = json.loads(block.text.strip())
+                        raw = block.text.strip()
+                        # Strip markdown code fences if Claude wrapped the JSON
+                        if raw.startswith("```"):
+                            raw = re.sub(r"^```(?:json)?\s*", "", raw)
+                            raw = re.sub(r"\s*```$", "", raw.strip())
+                        plan = json.loads(raw)
                         yield {"type": "final_plan", "plan": plan}
                         return
-                    except json.JSONDecodeError:
-                        yield {"type": "error", "message": "Failed to parse plan JSON from Claude."}
+                    except json.JSONDecodeError as e:
+                        yield {"type": "error", "message": f"Failed to parse plan JSON: {str(e)[:120]}. Raw: {block.text[:300]}"}
                         return
             yield {"type": "error", "message": "No text response from Claude."}
             return
