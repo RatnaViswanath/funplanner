@@ -181,11 +181,11 @@ async def run_planner_agent(
     yield {"type": "agent_step", "label": "🧠  Parsing your request and deciding what to search..."}
     await asyncio.sleep(0.1)
 
-    # ── Agentic loop: max 20 rounds to allow 3-plan generation ──────────────────
-    for round_num in range(20):
+    # ── Agentic loop: max 10 rounds to prevent infinite loops ─────────────────
+    for round_num in range(10):
         response = await client.messages.create(
             model="claude-sonnet-4-20250514",
-            max_tokens=8192,
+            max_tokens=4096,
             system=SYSTEM_PROMPT,
             tools=TOOL_DEFINITIONS,
             messages=messages,
@@ -223,13 +223,6 @@ async def run_planner_agent(
         tool_calls = [b for b in response.content if b.type == "tool_use"]
         if not tool_calls:
             break
-
-        # After round 12, inject a strong nudge to produce the final JSON
-        if round_num >= 12:
-            messages.append({
-                "role": "user",
-                "content": "You have gathered enough data. STOP calling tools now. Produce the final JSON with all 3 plans immediately. No more tool calls."
-            })
 
         # Stream a step event for each unique tool being called
         seen_tools = set()
